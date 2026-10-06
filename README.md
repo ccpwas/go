@@ -1,2 +1,2 @@
-# go
-Project GO: A minimal, sleek Hong Kong Transit ETA app
+# Project GO: A minimal, sleek Hong Kong Transit ETA app
+
