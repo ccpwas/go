@@ -4,13 +4,14 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'HK Transit ETA',
-        short_name: 'TransitETA',
+        name: 'Go!',
+        short_name: 'Go!',
         description: 'Sleek and minimal Hong Kong Transit ETA application',
         theme_color: '#ffffff',
         background_color: '#ffffff',
