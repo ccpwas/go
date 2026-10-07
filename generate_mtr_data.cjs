@@ -1,0 +1,180 @@
+const fs = require('fs');
+
+const mtrData = {
+  "KTL": {
+    "name_en": "Kwun Tong Line",
+    "name_tc": "觀塘綫",
+    "stations": {
+      "WHA": {"name_en": "Whampoa", "name_tc": "黃埔"},
+      "HOM": {"name_en": "Ho Man Tin", "name_tc": "何文田"},
+      "YMT": {"name_en": "Yau Ma Tei", "name_tc": "油麻地"},
+      "MOK": {"name_en": "Mong Kok", "name_tc": "旺角"},
+      "PRE": {"name_en": "Prince Edward", "name_tc": "太子"},
+      "SKM": {"name_en": "Shek Kip Mei", "name_tc": "石硤尾"},
+      "KOT": {"name_en": "Kowloon Tong", "name_tc": "九龍塘"},
+      "LOF": {"name_en": "Lok Fu", "name_tc": "樂富"},
+      "WTS": {"name_en": "Wong Tai Sin", "name_tc": "黃大仙"},
+      "DIH": {"name_en": "Diamond Hill", "name_tc": "鑽石山"},
+      "CHH": {"name_en": "Choi Hung", "name_tc": "彩虹"},
+      "KOB": {"name_en": "Kowloon Bay", "name_tc": "九龍灣"},
+      "NTK": {"name_en": "Ngau Tau Kok", "name_tc": "牛頭角"},
+      "KWT": {"name_en": "Kwun Tong", "name_tc": "觀塘"},
+      "LAT": {"name_en": "Lam Tin", "name_tc": "藍田"},
+      "YAT": {"name_en": "Yau Tong", "name_tc": "油塘"},
+      "TIK": {"name_en": "Tiu Keng Leng", "name_tc": "調景嶺"}
+    }
+  },
+  "ISL": {
+    "name_en": "Island Line",
+    "name_tc": "港島綫",
+    "stations": {
+      "KET": {"name_en": "Kennedy Town", "name_tc": "堅尼地城"},
+      "HKU": {"name_en": "HKU", "name_tc": "香港大學"},
+      "SYP": {"name_en": "Sai Ying Pun", "name_tc": "西營盤"},
+      "SHW": {"name_en": "Sheung Wan", "name_tc": "上環"},
+      "CEN": {"name_en": "Central", "name_tc": "中環"},
+      "ADM": {"name_en": "Admiralty", "name_tc": "金鐘"},
+      "WAC": {"name_en": "Wan Chai", "name_tc": "灣仔"},
+      "CAB": {"name_en": "Causeway Bay", "name_tc": "銅鑼灣"},
+      "TIH": {"name_en": "Tin Hau", "name_tc": "天后"},
+      "FOH": {"name_en": "Fortress Hill", "name_tc": "炮台山"},
+      "NOP": {"name_en": "North Point", "name_tc": "北角"},
+      "QUB": {"name_en": "Quarry Bay", "name_tc": "鰂魚涌"},
+      "TAK": {"name_en": "Tai Koo", "name_tc": "太古"},
+      "SWH": {"name_en": "Sai Wan Ho", "name_tc": "西灣河"},
+      "SKW": {"name_en": "Shau Kei Wan", "name_tc": "筲箕灣"},
+      "HFC": {"name_en": "Heng Fa Chuen", "name_tc": "杏花邨"},
+      "CHW": {"name_en": "Chai Wan", "name_tc": "柴灣"}
+    }
+  },
+  "TWL": {
+    "name_en": "Tsuen Wan Line",
+    "name_tc": "荃灣綫",
+    "stations": {
+      "CEN": {"name_en": "Central", "name_tc": "中環"},
+      "ADM": {"name_en": "Admiralty", "name_tc": "金鐘"},
+      "TST": {"name_en": "Tsim Sha Tsui", "name_tc": "尖沙咀"},
+      "JOR": {"name_en": "Jordan", "name_tc": "佐敦"},
+      "YMT": {"name_en": "Yau Ma Tei", "name_tc": "油麻地"},
+      "MOK": {"name_en": "Mong Kok", "name_tc": "旺角"},
+      "PRE": {"name_en": "Prince Edward", "name_tc": "太子"},
+      "SSP": {"name_en": "Sham Shui Po", "name_tc": "深水埗"},
+      "CSW": {"name_en": "Cheung Sha Wan", "name_tc": "長沙灣"},
+      "LCK": {"name_en": "Lai Chi Kok", "name_tc": "荔枝角"},
+      "MEF": {"name_en": "Mei Foo", "name_tc": "美孚"},
+      "LAK": {"name_en": "Lai King", "name_tc": "荔景"},
+      "KWF": {"name_en": "Kwai Fong", "name_tc": "葵芳"},
+      "KWH": {"name_en": "Kwai Hing", "name_tc": "葵興"},
+      "TWH": {"name_en": "Tai Wo Hau", "name_tc": "大窩口"},
+      "TSW": {"name_en": "Tsuen Wan", "name_tc": "荃灣"}
+    }
+  },
+  "SIL": {
+    "name_en": "South Island Line",
+    "name_tc": "南港島綫",
+    "stations": {
+      "ADM": {"name_en": "Admiralty", "name_tc": "金鐘"},
+      "OCP": {"name_en": "Ocean Park", "name_tc": "海洋公園"},
+      "WCH": {"name_en": "Wong Chuk Hang", "name_tc": "黃竹坑"},
+      "LET": {"name_en": "Lei Tung", "name_tc": "利東"},
+      "SOH": {"name_en": "South Horizons", "name_tc": "海怡半島"}
+    }
+  },
+  "TCL": {
+    "name_en": "Tung Chung Line",
+    "name_tc": "東涌綫",
+    "stations": {
+      "HOK": {"name_en": "Hong Kong", "name_tc": "香港"},
+      "KOW": {"name_en": "Kowloon", "name_tc": "九龍"},
+      "OLY": {"name_en": "Olympic", "name_tc": "奧運"},
+      "NAC": {"name_en": "Nam Cheong", "name_tc": "南昌"},
+      "LAK": {"name_en": "Lai King", "name_tc": "荔景"},
+      "TSY": {"name_en": "Tsing Yi", "name_tc": "青衣"},
+      "SUN": {"name_en": "Sunny Bay", "name_tc": "欣澳"},
+      "TUC": {"name_en": "Tung Chung", "name_tc": "東涌"}
+    }
+  },
+  "EAL": {
+    "name_en": "East Rail Line",
+    "name_tc": "東鐵綫",
+    "stations": {
+      "ADM": {"name_en": "Admiralty", "name_tc": "金鐘"},
+      "EXC": {"name_en": "Exhibition Centre", "name_tc": "會展"},
+      "HUH": {"name_en": "Hung Hom", "name_tc": "紅磡"},
+      "MKK": {"name_en": "Mong Kok East", "name_tc": "旺角東"},
+      "KOT": {"name_en": "Kowloon Tong", "name_tc": "九龍塘"},
+      "TAW": {"name_en": "Tai Wai", "name_tc": "大圍"},
+      "SHT": {"name_en": "Sha Tin", "name_tc": "沙田"},
+      "FOT": {"name_en": "Fo Tan", "name_tc": "火炭"},
+      "RAC": {"name_en": "Racecourse", "name_tc": "馬場"},
+      "UNI": {"name_en": "University", "name_tc": "大學"},
+      "TAP": {"name_en": "Tai Po Market", "name_tc": "大埔墟"},
+      "TWO": {"name_en": "Tai Wo", "name_tc": "太和"},
+      "FAN": {"name_en": "Fanling", "name_tc": "粉嶺"},
+      "SHS": {"name_en": "Sheung Shui", "name_tc": "上水"},
+      "LOW": {"name_en": "Lo Wu", "name_tc": "羅湖"},
+      "LMC": {"name_en": "Lok Ma Chau", "name_tc": "落馬洲"}
+    }
+  },
+  "TML": {
+    "name_en": "Tuen Ma Line",
+    "name_tc": "屯馬綫",
+    "stations": {
+      "WKS": {"name_en": "Wu Kai Sha", "name_tc": "烏溪沙"},
+      "MOS": {"name_en": "Ma On Shan", "name_tc": "馬鞍山"},
+      "HEO": {"name_en": "Heng On", "name_tc": "恆安"},
+      "TSH": {"name_en": "Tai Shui Hang", "name_tc": "大水坑"},
+      "SHM": {"name_en": "Shek Mun", "name_tc": "石門"},
+      "CIO": {"name_en": "City One", "name_tc": "第一城"},
+      "STW": {"name_en": "Sha Tin Wai", "name_tc": "沙田圍"},
+      "CKT": {"name_en": "Che Kung Temple", "name_tc": "車公廟"},
+      "TAW": {"name_en": "Tai Wai", "name_tc": "大圍"},
+      "HIK": {"name_en": "Hin Keng", "name_tc": "顯徑"},
+      "DIH": {"name_en": "Diamond Hill", "name_tc": "鑽石山"},
+      "KAT": {"name_en": "Kai Tak", "name_tc": "啟德"},
+      "SUW": {"name_en": "Sung Wong Toi", "name_tc": "宋皇臺"},
+      "TKW": {"name_en": "To Kwa Wan", "name_tc": "土瓜灣"},
+      "HOM": {"name_en": "Ho Man Tin", "name_tc": "何文田"},
+      "HUH": {"name_en": "Hung Hom", "name_tc": "紅磡"},
+      "ETS": {"name_en": "East Tsim Sha Tsui", "name_tc": "尖東"},
+      "AUS": {"name_en": "Austin", "name_tc": "柯士甸"},
+      "NAC": {"name_en": "Nam Cheong", "name_tc": "南昌"},
+      "MEF": {"name_en": "Mei Foo", "name_tc": "美孚"},
+      "TWW": {"name_en": "Tsuen Wan West", "name_tc": "荃灣西"},
+      "KSR": {"name_en": "Kam Sheung Road", "name_tc": "錦上路"},
+      "YUL": {"name_en": "Yuen Long", "name_tc": "元朗"},
+      "LOP": {"name_en": "Long Ping", "name_tc": "朗屏"},
+      "TIS": {"name_en": "Tin Shui Wai", "name_tc": "天水圍"},
+      "SIH": {"name_en": "Siu Hong", "name_tc": "兆康"},
+      "TUM": {"name_en": "Tuen Mun", "name_tc": "屯門"}
+    }
+  },
+  "AEL": {
+    "name_en": "Airport Express",
+    "name_tc": "機場快綫",
+    "stations": {
+      "HOK": {"name_en": "Hong Kong", "name_tc": "香港"},
+      "KOW": {"name_en": "Kowloon", "name_tc": "九龍"},
+      "TSY": {"name_en": "Tsing Yi", "name_tc": "青衣"},
+      "AIR": {"name_en": "Airport", "name_tc": "機場"},
+      "AWE": {"name_en": "AsiaWorld-Expo", "name_tc": "博覽館"}
+    }
+  },
+  "TKL": {
+    "name_en": "Tseung Kwan O Line",
+    "name_tc": "將軍澳綫",
+    "stations": {
+      "NOP": {"name_en": "North Point", "name_tc": "北角"},
+      "QUB": {"name_en": "Quarry Bay", "name_tc": "鰂魚涌"},
+      "YAT": {"name_en": "Yau Tong", "name_tc": "油塘"},
+      "TIK": {"name_en": "Tiu Keng Leng", "name_tc": "調景嶺"},
+      "TKO": {"name_en": "Tseung Kwan O", "name_tc": "將軍澳"},
+      "HAH": {"name_en": "Hang Hau", "name_tc": "坑口"},
+      "POA": {"name_en": "Po Lam", "name_tc": "寶琳"},
+      "LHP": {"name_en": "LOHAS Park", "name_tc": "康城"}
+    }
+  }
+};
+
+fs.writeFileSync('src/data/mtr_lines.json', JSON.stringify(mtrData, null, 2));
+console.log("MTR Data Generated");

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { Search, ArrowLeftRight } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import { useKmbData } from '../hooks/useKmbData';
+import { GpsMarker } from './GpsMarker';
 import L from 'leaflet';
 
 // Fix leaflet icon issue
@@ -26,50 +28,58 @@ const MapUpdater = ({ center }) => {
 
 const RouteSearch = () => {
   const { t, i18n } = useTranslation();
-  const { routes, stops, loading, error, nearestStop } = useKmbData();
+  const { routes, stops, loading, error, nearestStop, userLocation } = useKmbData();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoute, setSelectedRoute] = useState(null);
+  const [currentBound, setCurrentBound] = useState('inbound'); // 'inbound' or 'outbound'
   const [routeStops, setRouteStops] = useState([]);
   const [etas, setEtas] = useState({});
   const [etaLoading, setEtaLoading] = useState(false);
 
   // Filter routes based on search
   const filteredRoutes = routes.filter(r =>
-    r.route.toLowerCase().includes(searchTerm.toLowerCase())
+    // Exact match first, then startsWith, then includes to prevent '268M' from popping up first when typing '68M'
+    r.route.toLowerCase() === searchTerm.toLowerCase() || r.route.toLowerCase().startsWith(searchTerm.toLowerCase())
   );
 
   // Get unique routes to avoid displaying multiple bounds initially
-  const uniqueRoutes = [];
-  const map = new Map();
+  let uniqueRoutes = [];
+  const routeMap = new Map();
   for (const item of filteredRoutes) {
-    if (!map.has(item.route)) {
-        map.set(item.route, true);
+    if (!routeMap.has(item.route)) {
+        routeMap.set(item.route, true);
         uniqueRoutes.push(item);
     }
   }
 
-  // Fetch stops for a selected route
-  const handleSelectRoute = async (route) => {
-    setSelectedRoute(route);
-    setSearchTerm(route.route);
-    setEtas({}); // Clear previous ETAs
+  // Sort unique routes so that exact matches are at the top
+  uniqueRoutes.sort((a, b) => {
+    const aExact = a.route.toLowerCase() === searchTerm.toLowerCase();
+    const bExact = b.route.toLowerCase() === searchTerm.toLowerCase();
+    if (aExact && !bExact) return -1;
+    if (!aExact && bExact) return 1;
+    return a.route.localeCompare(b.route);
+  });
 
+  // Fetch stops for a selected route
+  const fetchRouteStops = async (route, bound) => {
     try {
-      // 1. Fetch the sequence of stop IDs for this route and bound
-      const response = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${route.route}/inbound/1`);
-      // NOTE: For simplicity, we hardcode inbound/outbound "1". A robust app would allow user selection.
+      // Fetch the sequence of stop IDs for this route and bound
+      const response = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${route.route}/${bound}/1`);
       let data = await response.json();
 
+      // If data is empty for the requested bound, it might be a circular route or only run one way
       if (!data.data || data.data.length === 0) {
-        // Fallback to outbound if inbound has no stops
-        const responseOut = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${route.route}/outbound/1`);
-        data = await responseOut.json();
+        const altBound = bound === 'inbound' ? 'outbound' : 'inbound';
+        const responseAlt = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${route.route}/${altBound}/1`);
+        data = await responseAlt.json();
+        setCurrentBound(altBound); // Update UI to reflect the actual available bound
       }
 
-      const stopSequence = data.data;
+      const stopSequence = data.data || [];
 
-      // 2. Map the sequence to coordinates and names from our cached global stops
+      // Map the sequence to coordinates and names from our cached global stops
       const detailedStops = stopSequence.map(seqStop => {
         const globalStop = stops.find(s => s.stop === seqStop.stop);
         return {
@@ -87,6 +97,25 @@ const RouteSearch = () => {
     } catch (err) {
       console.error("Failed to fetch route stops", err);
     }
+  };
+
+  const handleSelectRoute = (route) => {
+    setSelectedRoute(route);
+    setSearchTerm(route.route);
+    setEtas({});
+    // Default to inbound initially
+    setCurrentBound('inbound');
+    fetchRouteStops(route, 'inbound');
+  };
+
+  const toggleBound = () => {
+    if (!selectedRoute) return;
+    const newBound = currentBound === 'inbound' ? 'outbound' : 'inbound';
+    setCurrentBound(newBound);
+    // When switching bounds, reset routeStops and ETAs so old ones don't linger
+    setRouteStops([]);
+    setEtas({});
+    fetchRouteStops(selectedRoute, newBound);
   };
 
   // Fetch ETAs when a stop marker is clicked
@@ -127,7 +156,7 @@ const RouteSearch = () => {
   return (
     <div className="flex flex-col md:flex-row gap-6 h-full">
       {/* Sidebar: Search */}
-      <div className="w-full md:w-1/3 flex flex-col h-[500px]">
+      <div className="w-full md:w-1/3 flex flex-col h-[300px] md:h-[500px] shrink-0">
         <div className="relative mb-4">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="text-slate-400" size={18} />
@@ -146,34 +175,70 @@ const RouteSearch = () => {
             <div className="text-sm text-slate-500 text-center py-4">{t('noRoutesFound')}</div>
           )}
 
-          {searchTerm.length > 0 && uniqueRoutes.slice(0, 50).map((route) => (
-            <div
-              key={route.route}
-              onClick={() => handleSelectRoute(route)}
-              className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                selectedRoute?.route === route.route
-                  ? 'border-indigo-500 bg-indigo-50/50 shadow-sm'
-                  : 'border-slate-100 bg-white hover:border-slate-300 hover:shadow-sm'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className="bg-red-500 text-white font-bold py-1 px-3 rounded-lg text-sm shadow-sm">
-                  {route.route}
+          {searchTerm.length > 0 && uniqueRoutes.slice(0, 50).map((route) => {
+            const isSelected = selectedRoute?.route === route.route;
+
+            // To figure out the correct destination name for the current bound, we try to find the matching route object
+            // The API returns two records for each route, one for each bound.
+            let displayDestEn = route.dest_en;
+            let displayDestTc = route.dest_tc;
+            let displayDestSc = route.dest_sc;
+
+            if (isSelected) {
+               // The KMB API bound mapping: 'O' is outbound, 'I' is inbound
+               const apiBoundChar = currentBound === 'outbound' ? 'O' : 'I';
+               // Find the specific route record that matches the current bound
+               const matchingBoundRoute = routes.find(r => r.route === route.route && r.bound === apiBoundChar) || route;
+               displayDestEn = matchingBoundRoute.dest_en;
+               displayDestTc = matchingBoundRoute.dest_tc;
+               displayDestSc = matchingBoundRoute.dest_sc;
+            }
+
+            return (
+              <div
+                key={route.route}
+                className={`p-3 rounded-xl border transition-all ${
+                  isSelected
+                    ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/30 shadow-sm'
+                    : 'border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm'
+                }`}
+              >
+                <div
+                  className="flex items-center space-x-3 cursor-pointer"
+                  onClick={() => !isSelected && handleSelectRoute(route)}
+                >
+                  <div className="bg-red-500 text-white font-bold py-1 px-3 rounded-lg text-sm shadow-sm shrink-0">
+                    {route.route}
+                  </div>
+                  <div className="flex flex-col text-sm flex-1">
+                    <span className="text-slate-500 dark:text-slate-400 text-xs">{t('to')}</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">
+                      {i18n.language === 'en' ? displayDestEn : (i18n.language === 'zh_Hans' ? displayDestSc : displayDestTc)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col text-sm">
-                  <span className="text-slate-500 text-xs">{t('to')}</span>
-                  <span className="font-semibold text-slate-700">
-                    {i18n.language === 'en' ? route.dest_en : (i18n.language === 'zh_Hans' ? route.dest_sc : route.dest_tc)}
-                  </span>
-                </div>
+
+                {/* Show Switch Direction Button only when selected */}
+                {isSelected && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleBound();
+                    }}
+                    className="mt-3 w-full flex items-center justify-center gap-2 bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-200 py-2 rounded-lg text-xs font-bold hover:bg-indigo-200 dark:hover:bg-indigo-700 transition-colors"
+                  >
+                    <ArrowLeftRight size={14} />
+                    Switch Direction
+                  </button>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* Main Content: Map */}
-      <div className="w-full md:w-2/3 h-[500px] rounded-2xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100 relative">
+      <div className="w-full md:w-2/3 h-[400px] md:h-[500px] rounded-2xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100 relative shrink-0">
         {!selectedRoute && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-sm">
             <p className="text-slate-500 font-medium px-4 py-2 bg-white rounded-xl shadow-sm border border-slate-100">
@@ -182,31 +247,49 @@ const RouteSearch = () => {
           </div>
         )}
 
-        <MapContainer center={mapCenter} zoom={11} className="h-full w-full">
+        <MapContainer center={mapCenter} zoom={11} className="h-full w-full z-0">
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
+            url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
+            className="map-tiles"
           />
           <MapUpdater center={mapCenter} />
 
-          {routeStops.length === 0 && nearestStop && (
-            <Marker position={[nearestStop.lat, nearestStop.long]}>
-              <Popup>
-                <div className="p-1 min-w-[150px]">
-                  <h3 className="font-bold text-slate-800 mb-2 border-b pb-1">{getStopName(nearestStop)}</h3>
-                  <div className="text-sm text-slate-500">Your closest stop. Search a route to see its path!</div>
-                </div>
-              </Popup>
-            </Marker>
+          {userLocation && <GpsMarker position={userLocation} />}
+
+          {routeStops.length > 0 && (
+            <Polyline
+              positions={routeStops.map(stop => [parseFloat(stop.lat), parseFloat(stop.long)])}
+              color="#ef4444"
+              weight={5}
+              opacity={0.8}
+            />
           )}
 
-          {routeStops.map((stop) => (
+          {stops.map((stop) => {
+            // Is this stop part of the selected route?
+            const isRouteStop = routeStops.some(rs => rs.stop === stop.stop);
+            const isNearest = nearestStop && stop.stop === nearestStop.stop;
+
+            // Only show popups for selected route stops or the nearest stop initially
+            if (!isRouteStop && !isNearest) {
+              return (
+                <Marker
+                  key={stop.stop}
+                  position={[parseFloat(stop.lat), parseFloat(stop.long)]}
+                  opacity={0.3} // Fade out non-route stops
+                />
+              )
+            }
+
+            return (
             <Marker
               key={stop.stop}
-              position={[stop.lat, stop.long]}
+              position={[parseFloat(stop.lat), parseFloat(stop.long)]}
               eventHandlers={{
-                click: () => handleStopClick(stop.stop),
+                click: () => isRouteStop ? handleStopClick(stop.stop) : null,
               }}
+              opacity={isRouteStop ? 1 : 0.8}
             >
               <Popup className="rounded-xl">
                 <div className="p-1 min-w-[150px]">
@@ -238,12 +321,15 @@ const RouteSearch = () => {
                       )}
                     </div>
                   ) : (
-                    <div className="text-sm text-slate-500">Click to load ETAs</div>
+                    <div className="text-sm text-slate-500">
+                      {isRouteStop ? 'Click to load ETAs' : 'Your closest stop. Search a route to see its path!'}
+                    </div>
                   )}
                 </div>
               </Popup>
             </Marker>
-          ))}
+            );
+          })}
         </MapContainer>
       </div>
     </div>

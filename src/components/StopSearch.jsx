@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import { useKmbData } from '../hooks/useKmbData';
+import { GpsMarker } from './GpsMarker';
 import L from 'leaflet';
 
 // Fix leaflet icon issue
@@ -116,7 +118,7 @@ const StopSearch = () => {
   return (
     <div className="flex flex-col md:flex-row gap-6 h-full">
       {/* Sidebar: Search */}
-      <div className="w-full md:w-1/3 flex flex-col h-[500px]">
+      <div className="w-full md:w-1/3 flex flex-col h-[300px] md:h-[500px] shrink-0">
         <div className="relative mb-4">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="text-slate-400" size={18} />
@@ -154,21 +156,30 @@ const StopSearch = () => {
       </div>
 
       {/* Main Content: Map */}
-      <div className="w-full md:w-2/3 h-[500px] rounded-2xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100 relative">
-        <MapContainer center={mapCenter} zoom={selectedStop ? 16 : 11} className="h-full w-full">
+      <div className="w-full md:w-2/3 h-[400px] md:h-[500px] rounded-2xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100 relative shrink-0">
+        <MapContainer center={mapCenter} zoom={selectedStop ? 16 : 11} className="h-full w-full z-0">
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
+            url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
+            className="map-tiles"
           />
           <MapUpdater center={mapCenter} />
 
-          {selectedStop && (
-            <Marker
-              position={[selectedStop.lat, selectedStop.long]}
-              eventHandlers={{
-                click: () => handleStopClick(selectedStop),
-              }}
-            >
+          {userLocation && <GpsMarker position={userLocation} />}
+
+          {stops.map((stop) => {
+            const isSelected = selectedStop && stop.stop === selectedStop.stop;
+
+            return (
+              <Marker
+                key={stop.stop}
+                position={[parseFloat(stop.lat), parseFloat(stop.long)]}
+                eventHandlers={{
+                  click: () => handleStopClick(stop),
+                }}
+                opacity={isSelected ? 1 : 0.5}
+              >
+                {isSelected && (
               <Popup className="rounded-xl min-w-[200px]" autoPan={false}>
                 <div className="p-1 max-h-[300px] overflow-y-auto custom-scrollbar">
                   <h3 className="font-bold text-slate-800 mb-3 border-b pb-2 sticky top-0 bg-white z-10">
@@ -214,8 +225,10 @@ const StopSearch = () => {
                   )}
                 </div>
               </Popup>
+                )}
             </Marker>
-          )}
+            );
+          })}
         </MapContainer>
       </div>
     </div>

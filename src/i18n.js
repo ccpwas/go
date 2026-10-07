@@ -21,7 +21,15 @@ const resources = {
       eta: "ETA",
       nextBuses: "Next Buses",
       language: "Language",
-      route: "Route"
+      route: "Route",
+      mtr: "MTR",
+      tripPlan: "Trip Planning",
+      originStation: "Origin Station",
+      destStation: "Destination Station",
+      startPoint: "Start Point",
+      endPoint: "End Point",
+      addWaypoint: "Add Waypoint",
+      calculate: "Calculate Route"
     }
   },
   zh_Hant: {
@@ -43,7 +51,15 @@ const resources = {
       eta: "預計到達時間",
       nextBuses: "下一班車",
       language: "語言",
-      route: "路線"
+      route: "路線",
+      mtr: "港鐵",
+      tripPlan: "行程規劃",
+      originStation: "起點站",
+      destStation: "終點站",
+      startPoint: "起點",
+      endPoint: "終點",
+      addWaypoint: "新增途經點",
+      calculate: "計算路線"
     }
   },
   zh_Hans: {
@@ -65,7 +81,15 @@ const resources = {
       eta: "预计到达时间",
       nextBuses: "下一班车",
       language: "语言",
-      route: "路线"
+      route: "路线",
+      mtr: "港铁",
+      tripPlan: "行程规划",
+      originStation: "起点站",
+      destStation: "终点站",
+      startPoint: "起点",
+      endPoint: "终点",
+      addWaypoint: "新增途经点",
+      calculate: "计算路线"
     }
   }
 };

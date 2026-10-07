@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 // Caching to prevent refetching during session
 let cachedRoutes = null;
 let cachedStops = null;
+let cachedRouteStops = null;
 
 // Haversine distance formula to calculate distance between two coordinates
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -22,7 +23,8 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 export const useKmbData = () => {
   const [routes, setRoutes] = useState(cachedRoutes || []);
   const [stops, setStops] = useState(cachedStops || []);
-  const [loading, setLoading] = useState(!cachedRoutes || !cachedStops);
+  const [routeStops, setRouteStops] = useState(cachedRouteStops || []);
+  const [loading, setLoading] = useState(!cachedRoutes || !cachedStops || !cachedRouteStops);
   const [error, setError] = useState(null);
 
   const [userLocation, setUserLocation] = useState(null);
@@ -30,7 +32,7 @@ export const useKmbData = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (cachedRoutes && cachedStops) {
+      if (cachedRoutes && cachedStops && cachedRouteStops) {
         return; // Use cache
       }
 
@@ -44,6 +46,10 @@ export const useKmbData = () => {
         const stopsResponse = await fetch('https://data.etabus.gov.hk/v1/transport/kmb/stop');
         const stopsData = await stopsResponse.json();
 
+        // Fetch all route stops
+        const routeStopsResponse = await fetch('https://data.etabus.gov.hk/v1/transport/kmb/route-stop');
+        const routeStopsData = await routeStopsResponse.json();
+
         if (routesData?.data) {
           cachedRoutes = routesData.data;
           setRoutes(routesData.data);
@@ -52,6 +58,11 @@ export const useKmbData = () => {
         if (stopsData?.data) {
           cachedStops = stopsData.data;
           setStops(stopsData.data);
+        }
+
+        if (routeStopsData?.data) {
+          cachedRouteStops = routeStopsData.data;
+          setRouteStops(routeStopsData.data);
 
           // Once we have stops, try to get user location
           if ("geolocation" in navigator) {
@@ -117,5 +128,5 @@ export const useKmbData = () => {
     }
   }, [stops]);
 
-  return { routes, stops, loading, error, userLocation, nearestStop };
+  return { routes, stops, routeStops, loading, error, userLocation, nearestStop };
 };
